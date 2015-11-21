@@ -1,0 +1,62 @@
+Sysfs tagging
+文件系统标签
+-------------
+
+(Taken almost verbatim from Eric Biederman's netns tagging patch
+commit msg)
+几乎逐字取自Eric Biederman's的netns标签补丁提交信息
+
+The problem.  Network devices show up in sysfs and with the network
+namespace active multiple devices with the same name can show up in
+the same directory, ouch!
+这个问题。网络设备出现在sysfs并且伴着网络名称空间活跃的多个具有相同名字的设备可以出现在相同的目录中，哎呀！
+
+To avoid that problem and allow existing applications in network
+namespaces to see the same interface that is currently presented in
+sysfs, sysfs now has tagging directory support.
+为了避免那个问题并且允许在网络名称空间里存在应用来观察相同的、目前在sysfs中的接口，sysfs现在已经标记目录支持。
+
+By using the network namespace pointers as tags to separate out the
+the sysfs directory entries we ensure that we don't have conflicts
+in the directories and applications only see a limited set of
+the network devices.
+通过用网络名称空间指针作为标签来分离出sysfs的目录入口，我们确定我们不会在目录和应用中发生冲突，只能看到一组有限的网络设备。
+
+Each sysfs directory entry may be tagged with zero or one
+namespaces.  A sysfs_dirent is augmented with a void *s_ns.  If a
+directory entry is tagged, then sysfs_dirent->s_flags will have a
+flag between KOBJ_NS_TYPE_NONE and KOBJ_NS_TYPES, and s_ns will
+point to the namespace to which it belongs.
+每个sysfs目录入口可能被0或一个名称空间标记。一个sysfs_dirent被一个void *s_ns增强。如果一个目录入口被标记了，
+那sysfs_dirent->s_flags将有一个介于KOBJ_NS_TYPE_NONE 和KOBJ_NS_TYPES的标志，并且s_ns将指向它属于的名称空间。
+
+Each sysfs superblock's sysfs_super_info contains an array void
+*ns[KOBJ_NS_TYPES].  When a task in a tagging namespace
+kobj_nstype first mounts sysfs, a new superblock is created.  It
+will be differentiated from other sysfs mounts by having its
+s_fs_info->ns[kobj_nstype] set to the new namespace.  Note that
+through bind mounting and mounts propagation, a task can easily view
+the contents of other namespaces' sysfs mounts.  Therefore, when a
+namespace exits, it will call kobj_ns_exit() to invalidate any
+sysfs_dirent->s_ns pointers pointing to it.
+每个sysfs超级块的sysfs_super_info包含了一组void *ns[KOBJ_NS_TYPES].当一个任务在标记的名称空间时，kobj_nstype首先挂载到sysfs，
+一个新的超级块创建了。通过它的s_fs_info->ns[kobj_nstype设置的新名称空间，它将从其他sysfs挂载中区分开来。
+注意，通过绑定安装和挂载传播，一个任务可以轻松的看到其他名称空间sysfs安装的内容。
+因此，当一个名称空间退出，会调用kobj_ns_exit()来无效化任何指向它sysfs_dirent->s_ns的指针。
+
+Users of this interface:
+这个的用户接口
+- define a type in the kobj_ns_type enumeration.
+  定义一个kobj_ns_type的枚举类型
+
+- call kobj_ns_type_register() with its kobj_ns_type_operations which has
+  调用kobj_ns_type_register()用kobj_ns_type_operations当它有
+
+  - current_ns() which returns current's namespace
+    current_ns() 返回当前的名称空间
+  - netlink_ns() which returns a socket's namespace
+    netlink_ns() 返回一个套接字的名称空间
+  - initial_ns() which returns the initial namesapce
+    initial_ns() 返回初始的名称空间
+- call kobj_ns_exit() when an individual tag is no longer valid
+  调用kobj_ns_exit()当一个单独的标签不再有效
