@@ -1,0 +1,44 @@
+Linux内核源码Document目录下包含了大量开发人员撰写的有关内核的文档，请选择2篇翻译成中文文档。
+
+
+Device Tree Dynamic Resolver Notes
+设备树动态解析器笔记
+----------------------------------
+
+This document describes the implementation of the in-kernel
+Device Tree resolver, residing in drivers/of/resolver.c and is a
+companion document to Documentation/devicetree/dt-object-internal.txt[1]
+这个文件描述了内核设备树解析器的实现，属于drivers/of/resolver.c。而且它是Documentation/devicetree/dt-object-internal.txt[1]的相关文件。
+
+How the resolver works
+解析器是如何工作的
+----------------------
+
+The resolver is given as an input an arbitrary tree compiled with the
+proper dtc option and having a /plugin/ tag. This generates the
+appropriate __fixups__ & __local_fixups__ nodes as described in [1].
+解析器是作为输入一棵任意且由适当的dtc选项编译，有插件/标签的树。这个生成了适当的修正和局部修正像[1]中所描述的。
+
+In sequence the resolver works by the following steps:
+按顺序解析器按照下列步骤工作:
+
+1. Get the maximum device tree phandle value from the live tree + 1.
+   从生存树+1中获得最大设备树的预处理值
+
+2. Adjust all the local phandles of the tree to resolve by that amount.
+   通过那个数量调整树的所有局部预处理来解决
+
+3. Using the __local__fixups__ node information adjust all local references
+   by the same amount.
+   通过相同的数量，用局部修正的结点信息来调整所有局部引用
+
+4. For each property in the __fixups__ node locate the node it references
+   in the live tree. This is the label used to tag the node.
+   对于每个修正结点的属性定位在它在生存树中所引用的结点。这是个用来标记结点的标签。
+
+5. Retrieve the phandle of the target of the fixup.
+   检索修正目标的预处理。
+
+6. For each fixup in the property locate the node:property:offset location
+   and replace it with the phandle value.
+   对于每个属性的修正定位在结点中：属性：偏移位置：以及用预处理的值来替换它。
